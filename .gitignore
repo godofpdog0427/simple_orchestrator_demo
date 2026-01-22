@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Orchestrator runtime
+.orchestrator/
+!.orchestrator/.gitkeep
+
+# Workspace isolation (Phase 3.5)
+# All Agent file operations happen here to prevent project pollution
+.orchestrator/workspace/
+
+# Workspace state files (Phase 5B)
+# Contains conversation history and task summaries per session
+# Note: These are already excluded by .orchestrator/ pattern above
+# but listed explicitly for clarity
+# .orchestrator/workspace/*.json
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS
+.DS_Store
+Thumbs.db

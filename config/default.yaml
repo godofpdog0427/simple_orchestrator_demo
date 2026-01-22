@@ -1,0 +1,221 @@
+orchestrator:
+  name: "simple-orchestrator"
+  max_iterations: 50
+  debug: false
+  working_directory: "./.orchestrator/workspace"  # Isolated workspace for Agent operations (Phase 3.5)
+
+# Execution Mode (Phase 6A)
+mode: "plan"  # Current execution mode: ask, plan, execute
+
+llm:
+  provider: "azure_anthropic"  # Options: "anthropic", "azure_anthropic"
+
+  anthropic:
+    model: "claude-sonnet-4-20250514"
+    max_tokens: 16384  # Increased for long-form content (reports, analysis)
+    temperature: 0.7
+    api_key_env: "ANTHROPIC_API_KEY"
+
+    # Retry configuration for rate limit (429) errors
+    retry:
+      max_retries: 5  # Maximum number of retry attempts
+      base_delay: 2.0  # Initial delay in seconds
+      max_delay: 60.0  # Maximum delay between retries
+      exponential_base: 2.0  # Multiplier for exponential backoff
+
+    # Request throttling (optional, disabled by default)
+    throttle:
+      enabled: false  # Enable to prevent rapid consecutive requests
+      min_request_interval: 0.5  # Minimum seconds between requests
+
+  # Azure-hosted Anthropic API configuration
+  # To use Azure, set provider: "azure_anthropic" above
+  azure_anthropic:
+    endpoint: "https://prod-knowledge-navigator-aoai.services.ai.azure.com/anthropic/"  # Required: Azure endpoint URL
+    deployment_name: "claude-sonnet-4-5"  # Required: Azure deployment name
+    api_key_env: "AZURE_ANTHROPIC_API_KEY"  # Environment variable for API key
+    max_tokens: 16384  # Increased for long-form content (reports, analysis)
+    temperature: 0.7
+
+    # Retry configuration (same as anthropic)
+    retry:
+      max_retries: 5
+      base_delay: 2.0
+      max_delay: 60.0
+      exponential_base: 2.0
+
+    # Request throttling
+    throttle:
+      enabled: false
+      min_request_interval: 0.5
+
+hooks:
+  enabled: true
+  directories:
+    - "./user_extensions/hooks"
+  config_file: "./config/hooks.yaml"
+
+tools:
+  bash:
+    enabled: true
+    requires_approval: true
+    timeout_seconds: 30
+    max_output_length: 10000
+    working_dir: "."
+    blocked_commands:
+      - "rm -rf /"
+      - "mkfs"
+      - "dd if=/dev/zero"
+      - ":(){ :|:& };:"
+      - "> /dev/sda"
+    environment:
+      TERM: "xterm-256color"
+  
+  file_read:
+    enabled: true
+    requires_approval: false
+    max_file_size_mb: 10
+  
+  file_write:
+    enabled: true
+    requires_approval: true
+  
+  file_delete:
+    enabled: true
+    requires_approval: true
+
+  todo_list:
+    enabled: true
+    requires_approval: false
+
+  task_decompose:
+    enabled: true
+    requires_approval: false
+
+  web_fetch:
+    enabled: true
+    requires_approval: false
+    timeout_seconds: 30
+    max_response_size_mb: 5
+    follow_redirects: true
+    max_redirects: 10
+    user_agent: "SimpleOrchestrator/1.0"
+    allowed_schemes:
+      - http
+      - https
+    blocked_domains: []  # Optional: Add domains to block for security
+
+  directories:
+    - "./user_extensions/tools"
+
+skills:
+  enabled: true  # Enable skill system (Phase 4A)
+  builtin_path: "src/orchestrator/skills/builtin"  # Path to built-in skills
+  user_path: "user_extensions/skills"  # Path to user-defined skills
+  auto_discover: true  # Automatically discover SKILL.md files
+  auto_inject: true  # Automatically inject matching skills into prompt
+  max_auto_inject: 3  # Maximum number of skills to auto-inject (prevent prompt bloat)
+
+subagents:
+  enabled: true  # Enable subagent system (Phase 4B)
+  max_concurrent: 3  # Maximum number of concurrent subagents
+  default_constraints:
+    max_tokens: 50000  # Default token budget for subagents
+    timeout_seconds: 300  # Default timeout (5 minutes)
+    max_iterations: 15  # Default max reasoning iterations
+    allowed_tools: ["bash", "file_read", "file_write"]  # Default allowed tools
+
+cache:
+  enabled: true  # Enable caching system (Phase 5A)
+  ttl: 3600  # Default TTL in seconds (1 hour)
+  max_entries: 1000  # Maximum number of cache entries
+  tool_results: true  # Cache tool execution results
+  llm_responses: false  # Cache LLM responses (disabled by default for safety)
+
+# Workspace Settings (Phase 5B)
+# Phase 8: Session Memory
+workspace:
+  enabled: true  # Enable workspace persistence
+  workspace_dir: ".orchestrator/workspace_state"  # Directory for workspace state files (separate from working directory)
+  session_registry: ".orchestrator/sessions.json"  # Session metadata registry (Phase 8)
+
+  # Task summaries
+  max_task_summaries: 10  # Keep last N task summaries in rolling window
+
+  # Conversation compression
+  compression:
+    enabled: true
+    max_messages: 100  # Compress when conversation > 100 messages
+    compress_oldest: 50  # Compress oldest N messages into summary
+
+  # Workspace lifecycle
+  lifecycle:
+    ttl_days: 365  # Delete workspaces after 1 year
+    auto_cleanup_on_start: false  # Clean old workspaces on orchestrator startup
+
+  # Context injection settings
+  context_injection:
+    max_recent_tasks: 3  # Inject last N task summaries
+    max_conversation_messages: 10  # Inject last N conversation messages
+    max_related_tasks: 2  # Inject top N keyword-matched tasks
+
+tasks:
+  max_depth: 5  # Maximum subtask nesting depth (Phase 3)
+  max_subtasks_per_task: 20  # Maximum subtasks per parent task (Phase 3)
+  auto_block_on_dependency: true  # Auto set status to BLOCKED if dependencies not met (Phase 3)
+  autosave_interval: 60
+  max_pending_tasks: 100
+
+persistence:
+  enabled: true
+  state_file: "./.orchestrator/state.json"
+  create_backups: true
+  max_backups: 5
+  autosave_interval: 30
+
+logging:
+  level: "INFO"
+  file: "./.orchestrator/logs/orchestrator.log"
+  console: false  # Disabled for clean Live display
+  log_llm_calls: true
+  log_tool_calls: true
+  max_bytes: 10485760
+  backup_count: 5
+
+cli:
+  theme: "monokai"
+  use_rich: true
+  # Display mode configuration (Phase 5C)
+  use_streaming_display: true  # NEW: Claude Code-like display with fixed TODO at top, streaming output (recommended)
+  use_live_display: false      # Use LiveDisplayManager with fixed layout zones (Phase 5B)
+  # Note: If both are false, uses basic DisplayManager (panel mode)
+  show_progress: true
+  history_file: "./.orchestrator/history"
+  max_history_lines: 1000
+
+  # Activity indicator settings (Phase 7B/7C)
+  # Shows animated spinner during tool execution for better UX feedback
+  activity_indicator:
+    enabled: true  # Enable/disable activity indicators
+    spinner_style: "dots"  # Options: dots, dots2, dots3, line, line2, arc, circle, bouncingBar, bouncingBall, aesthetic
+    color: "cyan"  # Rich style color for spinner
+    # Phase 7C: Timeout warning settings
+    warning_delay: 3.0  # Seconds before showing "still waiting" message (default: 10.0)
+    warning_interval: 5.0  # Seconds between subsequent warning updates (default: 15.0)
+
+# User preferences (Phase 6E)
+user:
+  # Username for welcome greeting (optional)
+  # If not set, uses $USER environment variable
+  username: null  # Set to your name or leave null
+
+  # Preferred mascot pose for welcome screen
+  # Options: happy, thinking, waving, sleeping
+  mascot_pose: "waving"
+
+# Interrupt handling (Phase 7)
+interrupt:
+  enabled: true  # Enable graceful interrupt handling
+  soft_interrupt_limit: 2  # Number of soft interrupts (Ctrl+C) before escalating to hard interrupt
+  preserve_state: true  # Save workspace state on interrupt
+  cancel_subagents: true  # Cancel active subagents on interrupt

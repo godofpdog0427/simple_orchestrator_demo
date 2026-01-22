@@ -1,0 +1,87 @@
+hooks:
+  # Display hook - real-time CLI output (highest priority)
+  "*":
+    - path: "orchestrator.hooks.builtin.display:DisplayHook"
+      enabled: true
+      priority: 5
+      config:
+        enabled: true
+        show_iterations: true
+        show_reasoning: true
+        show_tools: true
+        show_todos: true
+
+    - path: "orchestrator.hooks.builtin.logging:LoggingHook"
+      enabled: true
+      priority: 10
+      config:
+        log_file: ".orchestrator/hooks.log"
+        log_format: "text"  # "text" or "json"
+        include_metadata: false
+
+  # Orchestrator lifecycle events
+  orchestrator.start:
+    - path: "orchestrator.hooks.builtin.logging:StartupLoggingHook"
+      enabled: true
+      priority: 10
+      config: {}
+
+  # LLM call hooks
+  llm.before_call:
+    - path: "orchestrator.hooks.builtin.logging:LLMCallLoggingHook"
+      enabled: true
+      priority: 100
+      config:
+        log_prompts: false  # Set to true for debugging
+        log_tokens: true
+
+  llm.after_call:
+    - path: "orchestrator.hooks.builtin.logging:LLMCallLoggingHook"
+      enabled: true
+      priority: 100
+      config:
+        log_prompts: false
+        log_tokens: true
+
+  # Tool execution hooks
+  tool.requires_approval:
+    - path: "orchestrator.hooks.builtin.hitl:HITLHook"
+      enabled: true
+      priority: 50
+      config:
+        timeout: 300  # 5 minutes
+        auto_approve_safe_tools: true
+        prompt_format: "standard"  # "standard" or "detailed"
+        # NEW (Phase 6D): Session-level approval whitelist
+        # When user responds "always", tool is added to whitelist for this session
+        # Whitelist persisted in workspace.user_preferences["approval_whitelist"]
+        # Use `orchestrator approval list` to view whitelisted tools
+        # Use `orchestrator approval clear` to clear whitelist
+
+  # Task lifecycle hooks for metrics
+  task.completed:
+    - path: "orchestrator.hooks.builtin.metrics:MetricsHook"
+      enabled: true
+      priority: 100
+      config:
+        output_file: ".orchestrator/metrics.json"
+        collect_task_metrics: true
+        collect_tool_metrics: true
+
+  task.failed:
+    - path: "orchestrator.hooks.builtin.metrics:MetricsHook"
+      enabled: true
+      priority: 100
+      config:
+        output_file: ".orchestrator/metrics.json"
+        collect_task_metrics: true
+        collect_tool_metrics: true
+
+  tool.after_execute:
+    - path: "orchestrator.hooks.builtin.metrics:MetricsHook"
+      enabled: true
+      priority: 100
+      config:
+        output_file: ".orchestrator/metrics.json"
+        collect_task_metrics: true
+        collect_tool_metrics: true

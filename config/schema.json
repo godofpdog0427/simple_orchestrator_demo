@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Orchestrator Configuration Schema",
+  "type": "object",
+  "properties": {
+    "orchestrator": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "max_iterations": {"type": "integer", "minimum": 1}
+      }
+    },
+    "llm": {
+      "type": "object",
+      "properties": {
+        "provider": {"type": "string", "enum": ["anthropic", "openai", "local"]}
+      }
+    }
+  }
+}
